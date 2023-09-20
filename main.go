@@ -106,7 +106,7 @@ func (bridge *WaterrowerMQTTBridge) MainLoop() {
 	duration = 0
 	workout := NewS4Workout()
 	workout.AddSingleWorkout(duration, distance)
-	//go bridge.publishEvents()
+	go bridge.publishEvents()
 	//go bridge.publishAggregatedData()
 	bridge.S4.Run(&S4Workout{})
 }
