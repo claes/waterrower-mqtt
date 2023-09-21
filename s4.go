@@ -88,38 +88,6 @@ type S4 struct {
 	debug      bool
 }
 
-// func findUsbSerialModem() string {
-// 	//contents, _ := ioutil.ReadDir("/dev")
-// 	contents, _ := ioutil.ReadDir("/dev")
-
-// 	for _, f := range contents {
-// 		//if strings.Contains(f.Name(), "u.usbmodem") {
-// 		//return "/dev/" + f.Name()
-// 		if strings.Contains(f.Name(), "ttyACM0") {
-// 			return "/dev/" + f.Name()
-// 		}
-// 	}
-
-// 	return ""
-// }
-
-// func openPort() io.ReadWriteCloser {
-// 	name := findUsbSerialModem()
-// 	if len(name) == 0 {
-// 		fmt.Println("S4 USB serial modem port not found")
-// 		os.Exit(-1)
-// 	}
-
-// 	c := &goserial.Config{Name: name, Baud: 115200, CRLFTranslate: true}
-// 	p, err := goserial.OpenPort(c)
-// 	if err != nil {
-// 		fmt.Println(err)
-// 		os.Exit(-1)
-// 	}
-
-// 	return p
-// }
-
 func NewS4(device string, eventChannel chan<- AtomicEvent, aggregateEventChannel chan<- AggregateEvent, debug bool) *S4 {
 
 	c := &goserial.Config{Name: device, Baud: 115200, CRLFTranslate: true}
@@ -314,13 +282,13 @@ func (s4 *S4) informationHandler(b []byte) {
 		fwHigh, _ := strconv.ParseInt(msg[3:5], 0, 0) // 2
 		fwLow, _ := strconv.ParseInt(msg[5:7], 0, 0)  // 10
 		if model != 4 {
-			fmt.Println("not an S4 monitor")
+			printDebug("not an S4 monitor")
 		}
 		if fwHigh != 2 {
-			fmt.Println("unsupported major S4 firmware version")
+			printDebug("unsupported major S4 firmware version")
 		}
 		if fwLow != 10 {
-			fmt.Println("unsupported minor S4 firmware version")
+			printDebug("unsupported minor S4 firmware version")
 		}
 
 		// we are ready to start workout
@@ -351,7 +319,7 @@ func (s4 *S4) informationHandler(b []byte) {
 				s4.readMemoryRequest(address, string(size))
 			}
 		} else {
-			fmt.Println("error parsing int: ", err)
+			printDebug("error parsing int: ", err)
 		}
 	}
 }

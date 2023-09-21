@@ -39,7 +39,7 @@ func (workout S4Workout) AddSingleWorkout(duration time.Duration, distanceMeters
 		payload := Meters + fmt.Sprintf("%04X", distanceMeters)
 		workoutPacket = Packet{cmd: WorkoutSetDistanceRequest, data: []byte(payload)}
 	} else {
-		fmt.Println("Undefined workout")
+		printDebug("Undefined workout")
 	}
 	workout.workoutPackets.PushFront(workoutPacket)
 }

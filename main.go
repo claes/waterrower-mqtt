@@ -43,14 +43,6 @@ func NewWaterrowerMQTTBridge(waterrowerUSBDevice *string, mqttBroker string) *Wa
 		S4:                    s4,
 	}
 
-	funcs := map[string]func(client mqtt.Client, message mqtt.Message){
-		// "samsungremote/key/send":          bridge.onKeySend,
-		// "samsungremote/key/reconnectsend": bridge.onKeyReconnectSend,
-	}
-	for key, function := range funcs {
-		token := client.Subscribe(key, 0, function)
-		token.Wait()
-	}
 	time.Sleep(2 * time.Second)
 	return bridge
 }
@@ -135,11 +127,14 @@ func (bridge *WaterrowerMQTTBridge) MainLoop() {
 	workout.AddSingleWorkout(duration, distance)
 	go bridge.publishEvents()
 	go bridge.publishAggregateEvents()
-	//go bridge.publishAggregatedData()
-	// collector := NewEventCollector(bridge.aggregateEventChannel)
-	// go collector.Run()
 
 	bridge.S4.Run(&workout)
+}
+
+func printDebug(text ...any) {
+	if *debug {
+		fmt.Println(text...)
+	}
 }
 
 func printHelp() {
@@ -161,13 +156,6 @@ func main() {
 	}
 
 	bridge := NewWaterrowerMQTTBridge(usbDevice, *mqttBroker)
-
-	go func() {
-		for {
-			time.Sleep(8 * time.Second)
-			//bridge.reconnectIfNeeded()
-		}
-	}()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

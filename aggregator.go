@@ -3,8 +3,6 @@ package main
 // Copied from https://github.com/olympum/oarsman and adjusted
 // Copyright olympum
 
-import "fmt"
-
 type AggregateEvent struct {
 	Time_start            int64
 	Time                  int64
@@ -34,7 +32,7 @@ func newAggregator(atomicEventChannel chan<- AtomicEvent, aggregateEventChannel 
 
 func (aggregator *Aggregator) send(event *AggregateEvent) bool {
 	if aggregator.aggregateEventChannel == nil {
-		fmt.Println("(send) aggregator.aggregateEventChannel == nil")
+		printDebug("(send) aggregator.aggregateEventChannel == nil")
 		return false
 	}
 
@@ -46,7 +44,7 @@ func (aggregator *Aggregator) send(event *AggregateEvent) bool {
 	aggregator.event = &newEvent
 
 	aggregator.aggregateEventChannel <- toBeSent
-	fmt.Println("Sent aggregate event", event)
+	printDebug("Sent aggregate event", event)
 	return true
 }
 
@@ -64,16 +62,16 @@ func (aggregator *Aggregator) complete() {
 func (aggregator *Aggregator) consume(atomicEvent AtomicEvent) {
 	if aggregator.atomicEventChannel != nil {
 		aggregator.atomicEventChannel <- atomicEvent
-		fmt.Println("Sent atomic event", atomicEvent)
+		printDebug("Sent atomic event", atomicEvent)
 	}
 
 	if aggregator.aggregateEventChannel == nil {
-		fmt.Println("(consume) aggregator.aggregateEventChannel == nil")
+		printDebug("(consume) aggregator.aggregateEventChannel == nil")
 		return
 	}
 
 	aggregateEvent := aggregator.event
-	fmt.Println("Current aggregate event", aggregateEvent)
+	printDebug("Current aggregate event", aggregateEvent)
 	if aggregateEvent.Time_start == 0 {
 		aggregateEvent.Time_start = atomicEvent.Time
 	}
@@ -109,5 +107,5 @@ func (aggregator *Aggregator) consume(atomicEvent AtomicEvent) {
 		aggregator.complete()
 	}
 
-	fmt.Println("Current aggregate event", aggregateEvent)
+	printDebug("Current aggregate event", aggregateEvent)
 }
