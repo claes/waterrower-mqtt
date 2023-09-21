@@ -34,6 +34,7 @@ func newAggregator(atomicEventChannel chan<- AtomicEvent, aggregateEventChannel 
 
 func (aggregator *Aggregator) send(event *AggregateEvent) bool {
 	if aggregator.aggregateEventChannel == nil {
+		fmt.Println("(send) aggregator.aggregateEventChannel == nil")
 		return false
 	}
 
@@ -67,6 +68,7 @@ func (aggregator *Aggregator) consume(atomicEvent AtomicEvent) {
 	}
 
 	if aggregator.aggregateEventChannel == nil {
+		fmt.Println("(consume) aggregator.aggregateEventChannel == nil")
 		return
 	}
 

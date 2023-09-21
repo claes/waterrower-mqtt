@@ -15,15 +15,17 @@ import (
 var debug *bool
 
 type WaterrowerMQTTBridge struct {
-	eventChannel chan AtomicEvent
-	MQTTClient   mqtt.Client
-	S4           *S4
+	eventChannel          chan AtomicEvent
+	aggregateEventChannel chan AggregateEvent
+	MQTTClient            mqtt.Client
+	S4                    *S4
 }
 
 func NewWaterrowerMQTTBridge(waterrowerUSBDevice *string, mqttBroker string) *WaterrowerMQTTBridge {
 
 	eventChannel := make(chan AtomicEvent)
-	s4 := NewS4(*waterrowerUSBDevice, eventChannel, nil, *debug)
+	aggregateEventChannel := make(chan AggregateEvent)
+	s4 := NewS4(*waterrowerUSBDevice, eventChannel, aggregateEventChannel, *debug)
 
 	opts := mqtt.NewClientOptions().AddBroker(mqttBroker)
 	client := mqtt.NewClient(opts)
@@ -35,9 +37,10 @@ func NewWaterrowerMQTTBridge(waterrowerUSBDevice *string, mqttBroker string) *Wa
 	}
 
 	bridge := &WaterrowerMQTTBridge{
-		eventChannel: eventChannel,
-		MQTTClient:   client,
-		S4:           s4,
+		eventChannel:          eventChannel,
+		aggregateEventChannel: aggregateEventChannel,
+		MQTTClient:            client,
+		S4:                    s4,
 	}
 
 	funcs := map[string]func(client mqtt.Client, message mqtt.Message){
@@ -66,6 +69,30 @@ func (bridge *WaterrowerMQTTBridge) publishEvents() {
 		bridge.PublishMQTT("waterrower/event/influx",
 			fmt.Sprintf("event label=%s,value=%d,time=%d",
 				event.Label, event.Value, event.Time), false)
+	}
+}
+
+func (bridge *WaterrowerMQTTBridge) publishAggregateEvents() {
+	for {
+		event := <-bridge.aggregateEventChannel
+		jsonData, err := json.Marshal(event)
+		if err != nil {
+			fmt.Println("Error serializing to JSON:", err)
+			continue
+		}
+		bridge.PublishMQTT("waterrower/aggregated", string(jsonData), false)
+		bridge.PublishMQTT("waterrower/aggregated/influx",
+			fmt.Sprintf("aggregated time_start=%d,time=%d,start_distance_meters=%d,total_distance_meters=%d,"+
+				"stroke_rate=%d,watts=%d,calories=%d,speed_m_s=%f,heart_rate=%d",
+				bridge.S4.aggregator.event.Time_start,
+				bridge.S4.aggregator.event.Time,
+				bridge.S4.aggregator.event.Start_distance_meters,
+				bridge.S4.aggregator.event.Total_distance_meters,
+				bridge.S4.aggregator.event.Stroke_rate,
+				bridge.S4.aggregator.event.Watts,
+				bridge.S4.aggregator.event.Calories,
+				bridge.S4.aggregator.event.Speed_m_s,
+				bridge.S4.aggregator.event.Heart_rate), false)
 	}
 }
 
@@ -106,9 +133,13 @@ func (bridge *WaterrowerMQTTBridge) MainLoop() {
 	duration = 0
 	workout := NewS4Workout()
 	workout.AddSingleWorkout(duration, distance)
-	//go bridge.publishEvents()
-	go bridge.publishAggregatedData()
-	bridge.S4.Run(&S4Workout{})
+	go bridge.publishEvents()
+	go bridge.publishAggregateEvents()
+	//go bridge.publishAggregatedData()
+	// collector := NewEventCollector(bridge.aggregateEventChannel)
+	// go collector.Run()
+
+	bridge.S4.Run(&workout)
 }
 
 func printHelp() {
@@ -144,6 +175,7 @@ func main() {
 	fmt.Printf("Started\n")
 	go bridge.MainLoop()
 	<-c
+	bridge.S4.Exit()
 	fmt.Printf("Shut down\n")
 
 	os.Exit(0)
