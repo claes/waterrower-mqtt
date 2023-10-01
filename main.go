@@ -59,8 +59,8 @@ func (bridge *WaterrowerMQTTBridge) publishEvents() {
 		}
 		bridge.PublishMQTT("waterrower/event", string(jsonData), false)
 		bridge.PublishMQTT("waterrower/event/influx",
-			fmt.Sprintf("event label=\"%s\",value=%du,time=%di",
-				event.Label, event.Value, event.Time), false)
+			fmt.Sprintf("event label=\"%s\",value=%du,time=%di %d000000",
+				event.Label, event.Value, event.Time, event.Time), false)
 	}
 }
 
@@ -75,7 +75,7 @@ func (bridge *WaterrowerMQTTBridge) publishAggregateEvents() {
 		bridge.PublishMQTT("waterrower/aggregated", string(jsonData), false)
 		bridge.PublishMQTT("waterrower/aggregated/influx",
 			fmt.Sprintf("aggregated time_start=%di,time=%di,start_distance_meters=%du,total_distance_meters=%du,"+
-				"stroke_rate=%du,watts=%du,calories=%du,speed_m_s=%f,heart_rate=%du",
+				"stroke_rate=%du,watts=%du,calories=%du,speed_m_s=%f,heart_rate=%du %d000000",
 				bridge.S4.aggregator.event.Time_start,
 				bridge.S4.aggregator.event.Time,
 				bridge.S4.aggregator.event.Start_distance_meters,
@@ -84,7 +84,8 @@ func (bridge *WaterrowerMQTTBridge) publishAggregateEvents() {
 				bridge.S4.aggregator.event.Watts,
 				bridge.S4.aggregator.event.Calories,
 				bridge.S4.aggregator.event.Speed_m_s,
-				bridge.S4.aggregator.event.Heart_rate), false)
+				bridge.S4.aggregator.event.Heart_rate,
+				bridge.S4.aggregator.event.Time), false)
 	}
 }
 
