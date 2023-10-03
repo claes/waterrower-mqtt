@@ -76,17 +76,29 @@ func (bridge *WaterrowerMQTTBridge) publishAggregateEvents() {
 		bridge.PublishMQTT("waterrower/aggregated/influx",
 			fmt.Sprintf("aggregated time_start=%di,time=%di,start_distance_meters=%du,total_distance_meters=%du,"+
 				"stroke_rate=%du,watts=%du,calories=%du,speed_m_s=%f,heart_rate=%du %d000000",
-				bridge.S4.aggregator.event.Time_start,
-				bridge.S4.aggregator.event.Time,
-				bridge.S4.aggregator.event.Start_distance_meters,
-				bridge.S4.aggregator.event.Total_distance_meters,
-				bridge.S4.aggregator.event.Stroke_rate,
-				bridge.S4.aggregator.event.Watts,
-				bridge.S4.aggregator.event.Calories,
-				bridge.S4.aggregator.event.Speed_m_s,
-				bridge.S4.aggregator.event.Heart_rate,
-				bridge.S4.aggregator.event.Time), false)
+				event.Time_start,
+				event.Time,
+				event.Start_distance_meters,
+				event.Total_distance_meters,
+				event.Stroke_rate,
+				event.Watts,
+				event.Calories,
+				event.Speed_m_s,
+				event.Heart_rate,
+				event.Time), false)
 	}
+
+	/*
+		Time_start            int64
+		Time                  int64
+		Start_distance_meters uint64
+		Total_distance_meters uint64
+		Stroke_rate           uint64
+		Watts                 uint64
+		Calories              uint64
+		Speed_m_s             float64
+		Heart_rate            uint64
+	*/
 }
 
 func (bridge *WaterrowerMQTTBridge) publishAggregatedData() {
