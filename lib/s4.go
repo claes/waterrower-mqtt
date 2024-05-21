@@ -1,4 +1,4 @@
-package main
+package lib
 
 // Copied from https://github.com/olympum/oarsman and adjusted
 // Copyright olympum
@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -85,32 +86,29 @@ type S4 struct {
 	scanner    *bufio.Scanner
 	workout    *S4Workout
 	aggregator Aggregator
-	debug      bool
 }
 
-func NewS4(device string, eventChannel chan<- AtomicEvent, aggregateEventChannel chan<- AggregateEvent, debug bool) *S4 {
+func NewS4(device string, eventChannel chan<- AtomicEvent, aggregateEventChannel chan<- AggregateEvent) *S4 {
 
 	c := &goserial.Config{Name: device, Baud: 115200, CRLFTranslate: true}
 	p, err := goserial.OpenPort(c)
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("Error while opening port", "device", device, "error", err)
 		os.Exit(-1)
 	}
 
 	aggregator := newAggregator(eventChannel, aggregateEventChannel)
-	s4 := S4{port: p, scanner: bufio.NewScanner(p), aggregator: aggregator, debug: debug}
+	s4 := S4{port: p, scanner: bufio.NewScanner(p), aggregator: aggregator}
 	return &s4
 }
 
 func (s4 *S4) write(p Packet) {
 	n, err := s4.port.Write(p.Bytes())
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("Error writing to port", "error", err)
 		os.Exit(-1)
 	}
-	if s4.debug {
-		fmt.Printf("written %s (%d+1 bytes)", strings.TrimRight(string(p.Bytes()), "\n"), n-1)
-	}
+	slog.Debug(fmt.Sprintf("written %s (%d+1 bytes)", strings.TrimRight(string(p.Bytes()), "\n"), n-1))
 	time.Sleep(25 * time.Millisecond) // yield per spec
 }
 
@@ -118,9 +116,7 @@ func (s4 *S4) read() {
 	for s4.scanner.Scan() {
 		b := s4.scanner.Bytes()
 		if len(b) > 0 {
-			if s4.debug {
-				fmt.Printf("read %s (%d+1 bytes)", string(b), len(b))
-			}
+			slog.Debug(fmt.Sprintf("read %s (%d+1 bytes)", string(b), len(b)))
 			s4.onPacketReceived(b)
 			if s4.workout.state == WorkoutCompleted || s4.workout.state == WorkoutExited {
 				return
@@ -129,7 +125,7 @@ func (s4 *S4) read() {
 	}
 
 	if err := s4.scanner.Err(); err != nil {
-		fmt.Println(err)
+		slog.Error("Error reading", "error", err)
 		os.Exit(-1)
 	}
 }
@@ -173,7 +169,7 @@ func (s4 *S4) onPacketReceived(b []byte) {
 	case 'S':
 		s4.strokeHandler(b)
 	default:
-		fmt.Printf("Unrecognized packet: %s", string(b))
+		slog.Info("Unrecognized packet", "packet", b)
 	}
 }
 
@@ -182,7 +178,7 @@ func (s4 *S4) wRHandler(b []byte) {
 	if s == "_WR_" {
 		s4.write(Packet{cmd: ModelInformationRequest})
 	} else {
-		fmt.Printf("Unknown WaterRower init command %s\n", s)
+		slog.Error("Unknown WaterRower init command", "command", b)
 	}
 }
 
@@ -277,18 +273,18 @@ func (s4 *S4) informationHandler(b []byte) {
 	case 'V': // version
 		// e.g. IV40210
 		msg := string(b)
-		fmt.Printf("WaterRower S%s %s.%s\n", msg[2:3], msg[3:5], msg[5:7])
+		slog.Info(fmt.Sprintf("WaterRower S%s %s.%s\n", msg[2:3], msg[3:5], msg[5:7]))
 		model, _ := strconv.ParseInt(msg[2:3], 0, 0)  // 4
 		fwHigh, _ := strconv.ParseInt(msg[3:5], 0, 0) // 2
 		fwLow, _ := strconv.ParseInt(msg[5:7], 0, 0)  // 10
 		if model != 4 {
-			printDebug("not an S4 monitor")
+			slog.Debug("not an S4 monitor")
 		}
 		if fwHigh != 2 {
-			printDebug("unsupported major S4 firmware version")
+			slog.Debug("unsupported major S4 firmware version")
 		}
 		if fwLow != 10 {
-			printDebug("unsupported minor S4 firmware version")
+			slog.Debug("unsupported minor S4 firmware version")
 		}
 
 		// we are ready to start workout
@@ -319,7 +315,7 @@ func (s4 *S4) informationHandler(b []byte) {
 				s4.readMemoryRequest(address, string(size))
 			}
 		} else {
-			printDebug("error parsing int: ", err)
+			slog.Debug("Error parsing int: ", "error", err)
 		}
 	}
 }

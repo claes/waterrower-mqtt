@@ -1,4 +1,6 @@
-package main
+package lib
+
+import "log/slog"
 
 // Copied from https://github.com/olympum/oarsman and adjusted
 // Copyright olympum
@@ -32,7 +34,7 @@ func newAggregator(atomicEventChannel chan<- AtomicEvent, aggregateEventChannel 
 
 func (aggregator *Aggregator) send(event *AggregateEvent) bool {
 	if aggregator.aggregateEventChannel == nil {
-		printDebug("(send) aggregator.aggregateEventChannel == nil")
+		slog.Debug("(send) aggregator.aggregateEventChannel == nil")
 		return false
 	}
 
@@ -44,7 +46,7 @@ func (aggregator *Aggregator) send(event *AggregateEvent) bool {
 	aggregator.event = &newEvent
 
 	aggregator.aggregateEventChannel <- toBeSent
-	printDebug("Sent aggregate event", event)
+	slog.Debug("Sent aggregate event", "event", event)
 	return true
 }
 
@@ -62,16 +64,16 @@ func (aggregator *Aggregator) complete() {
 func (aggregator *Aggregator) consume(atomicEvent AtomicEvent) {
 	if aggregator.atomicEventChannel != nil {
 		aggregator.atomicEventChannel <- atomicEvent
-		printDebug("Sent atomic event", atomicEvent)
+		slog.Debug("Sent atomic event", "atomicEvent", atomicEvent)
 	}
 
 	if aggregator.aggregateEventChannel == nil {
-		printDebug("(consume) aggregator.aggregateEventChannel == nil")
+		slog.Debug("(consume) aggregator.aggregateEventChannel == nil")
 		return
 	}
 
 	aggregateEvent := aggregator.event
-	printDebug("Current aggregate event", aggregateEvent)
+	slog.Debug("Current aggregate event", "aggregateEvent", aggregateEvent)
 	if aggregateEvent.Time_start == 0 {
 		aggregateEvent.Time_start = atomicEvent.Time
 	}
@@ -107,5 +109,5 @@ func (aggregator *Aggregator) consume(atomicEvent AtomicEvent) {
 		aggregator.complete()
 	}
 
-	printDebug("Current aggregate event", aggregateEvent)
+	slog.Debug("Current aggregate event", "aggregateEvent", aggregateEvent)
 }
